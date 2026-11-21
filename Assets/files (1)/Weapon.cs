@@ -12,12 +12,10 @@ public class WeaponSlot
 
 
 public class Weapon : MonoBehaviour
-{
-    [Header("Arsenal")]
+
     public WeaponSlot[] weapons;
     public int startIndex = 0;
 
-    [Header("Referencias")]
     public Transform cameraTransform;
     public Transform muzzle;
     public LayerMask hitMask = ~0;

@@ -3,26 +3,27 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
 
-public enum InteractableType { Door, Switch, Key, Ammo, Health }
+// Los números quedan fijos a propósito para no alterar objetos ya configurados en la escena
+public enum InteractableType { Door = 0, Switch = 1, Ammo = 3, Health = 4 }
 
 
 [RequireComponent(typeof(Collider))]
 public class Interactable : MonoBehaviour
 {
-    public InteractableType type = InteractableType.Key;
+    public InteractableType type = InteractableType.Ammo;
     public AudioClip sound;
 
+    [Header("Puerta (Door)")]
     public Vector3 openOffset = new Vector3(0f, 3f, 0f);
     public float openTime = 1f;
-    public int keysRequired = 0;
-    public AudioClip lockedSound;
 
+    [Header("Interruptor (Switch)")]
     public UnityEvent onActivated;
     public string prompt = "Presiona E para activar";
     public Renderer indicator;
     public Color activatedColor = Color.green;
 
-    [Header("Recogible (Key / Ammo / Health)")]
+    [Header("Recogible (Ammo / Health)")]
     public int amount = 1;
     public float rotationSpeed = 90f;
 
@@ -45,7 +46,6 @@ public class Interactable : MonoBehaviour
     {
         switch (type)
         {
-            case InteractableType.Key:
             case InteractableType.Ammo:
             case InteractableType.Health:
                 transform.Rotate(0f, rotationSpeed * Time.deltaTime, 0f, Space.World);
@@ -60,7 +60,6 @@ public class Interactable : MonoBehaviour
                 break;
         }
     }
-
 
     void OnTriggerEnter(Collider other)
     {
@@ -82,7 +81,6 @@ public class Interactable : MonoBehaviour
         if (type == InteractableType.Switch && other.CompareTag("PLayer")) playerInside = false;
     }
 
-
     private void ActivateSwitch()
     {
         used = true;
@@ -94,7 +92,6 @@ public class Interactable : MonoBehaviour
         GameManagger.Notify("¡Mecanismo activado!");
     }
 
-
     private void Collect(Collider other)
     {
         PLayer player = other.GetComponentInParent<PLayer>();
@@ -104,17 +101,6 @@ public class Interactable : MonoBehaviour
 
         switch (type)
         {
-            case InteractableType.Key:
-            {
-                if (GameManagger.Instance != null)
-                {
-                    GameManagger.Instance.AddKey(amount);
-                    GameManagger.Notify("Llave obtenida");
-                    collected = true;
-                }
-                break;
-            }
-
             case InteractableType.Ammo:
             {
                 Weapon weapon = player.GetComponentInChildren<Weapon>();
@@ -155,7 +141,6 @@ public class Interactable : MonoBehaviour
         StopAllCoroutines();
         StartCoroutine(MoveTo(openPosition));
     }
-
     public void Close()
     {
         if (type != InteractableType.Door || !IsOpen) return;
@@ -163,24 +148,6 @@ public class Interactable : MonoBehaviour
 
         StopAllCoroutines();
         StartCoroutine(MoveTo(closedPosition));
-    }
-
-    void OnCollisionEnter(Collision collision)
-    {
-        if (type != InteractableType.Door || IsOpen || keysRequired <= 0) return;
-        if (!collision.collider.CompareTag("PLayer")) return;
-        if (GameManagger.Instance == null) return;
-
-        if (GameManagger.Instance.UseKeys(keysRequired))
-        {
-            GameManagger.Notify("Puerta abierta");
-            Open();
-        }
-        else
-        {
-            GameManagger.Notify("Necesitas " + keysRequired + " llave(s) para abrir esta puerta");
-            Feedback.PlaySound(lockedSound, transform.position);
-        }
     }
 
     private IEnumerator MoveTo(Vector3 destination)
