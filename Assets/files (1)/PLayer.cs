@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+[RequireComponent(typeof(Rigidbody))]
 public class PLayer : MonoBehaviour, IDamageable
 {
-    [Header("Configuración (ScriptableObject)")]
     public PlayerData data;
 
     public Transform cameraTransform;
@@ -13,41 +13,52 @@ public class PLayer : MonoBehaviour, IDamageable
     public bool rotateWithCamera = true;
 
     public float jumpForce = 6f;
-    public LayerMask groundMask;
-    public float groundCheckDistance = 0.2f;
 
     public float maxLive = 100f;
     public float live = 100f;
 
-    private Rigidbody rb;
-    private Vector3 moveDirection;
-    private bool jumpRequested;
-    public bool isGrounded;
-    private bool touchingGround;
-    private bool isDead;
-
-    public event System.Action<float> Damaged;
-
-    public float gravity = -20f;
-    private Vector3 verticalVelocity;
-    public float fuerzaSalto = 8f;
+    public float damageCooldown = 0.25f;
+    public float hitKickDistance = 0.8f;
+    public float hitKickDuration = 0.4f;
 
     public Vector3 respawnPoint;
-
     public float respawnGuardTime = 0.2f;
-    private bool isRespawning = false;
 
+    public bool isGrounded;
+    public bool IsDead { get { return isDead; } }
+
+    public event System.Action<float> Damaged;
+    public event System.Action Respawned;
+
+    private Rigidbody rb;
+    private FolllowCamera3D followCamera;
+    private Vector3 moveDirection;
+    private bool jumpRequested;
+    private bool touchingGround;
+    private bool isDead;
+    private bool isRespawning;
+    private float nextDamageTime;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
+        rb.isKinematic = false;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
 
         if (cameraTransform == null && Camera.main != null)
         {
             cameraTransform = Camera.main.transform;
         }
+
+        if (cameraTransform != null)
+        {
+            followCamera = cameraTransform.GetComponent<FolllowCamera3D>();
+        }
+
         respawnPoint = transform.position;
+
         if (data != null)
         {
             moveSpeed = data.moveSpeed;
@@ -59,7 +70,7 @@ public class PLayer : MonoBehaviour, IDamageable
 
     void Update()
     {
-        if (GameManagger.Instance != null && GameManagger.Instance.IsGameOver)
+        if (isDead || (GameManagger.Instance != null && GameManagger.Instance.IsGameOver))
         {
             moveDirection = Vector3.zero;
             return;
@@ -67,7 +78,8 @@ public class PLayer : MonoBehaviour, IDamageable
 
         ReadMovementInput();
 
-        if (isGrounded == true && Keyboard.current != null && Keyboard.current.spaceKey.IsPressed())
+        Keyboard keyboard = Keyboard.current;
+        if (isGrounded && keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
         {
             jumpRequested = true;
         }
@@ -77,6 +89,7 @@ public class PLayer : MonoBehaviour, IDamageable
     {
         isGrounded = touchingGround;
         touchingGround = false;
+
         ApplyMovement();
         ApplyRotation();
         ApplyJump();
@@ -84,9 +97,9 @@ public class PLayer : MonoBehaviour, IDamageable
 
     void OnCollisionStay(Collision collision)
     {
-        foreach (ContactPoint contact in collision.contacts)
+        for (int i = 0; i < collision.contactCount; i++)
         {
-            if (contact.normal.y > 0.5f)
+            if (collision.GetContact(i).normal.y > 0.5f)
             {
                 touchingGround = true;
                 return;
@@ -96,24 +109,37 @@ public class PLayer : MonoBehaviour, IDamageable
 
     private void ReadMovementInput()
     {
-        float horizontal = Input.GetAxis("Horizontal");
-        float vertical = Input.GetAxis("Vertical");
+        float horizontal = 0f;
+        float vertical = 0f;
 
-        if (cameraTransform == null)
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard != null)
         {
-            moveDirection = Vector3.zero;
-            return;
+            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) horizontal += 1f;
+            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) horizontal -= 1f;
+            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) vertical += 1f;
+            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) vertical -= 1f;
         }
 
-        Vector3 camForward = cameraTransform.forward;
-        camForward.y = 0f;
-        camForward.Normalize();
+        Gamepad gamepad = Gamepad.current;
+        if (gamepad != null)
+        {
+            Vector2 stick = gamepad.leftStick.ReadValue();
+            horizontal += stick.x;
+            vertical += stick.y;
+        }
 
-        Vector3 camRight = cameraTransform.right;
-        camRight.y = 0f;
-        camRight.Normalize();
+        Transform reference = cameraTransform != null ? cameraTransform : transform;
 
-        moveDirection = camForward * vertical + camRight * horizontal;
+        Vector3 forward = reference.forward;
+        forward.y = 0f;
+        forward.Normalize();
+
+        Vector3 right = reference.right;
+        right.y = 0f;
+        right.Normalize();
+
+        moveDirection = forward * vertical + right * horizontal;
         if (moveDirection.sqrMagnitude > 1f)
         {
             moveDirection.Normalize();
@@ -123,7 +149,6 @@ public class PLayer : MonoBehaviour, IDamageable
     private void ApplyMovement()
     {
         Vector3 horizontalMove = moveDirection * moveSpeed;
-
         rb.linearVelocity = new Vector3(horizontalMove.x, rb.linearVelocity.y, horizontalMove.z);
     }
 
@@ -136,18 +161,17 @@ public class PLayer : MonoBehaviour, IDamageable
             return;
         }
 
-        // Tercera persona (comportamiento original): gira hacia donde se mueve
         if (moveDirection.sqrMagnitude < 0.001f) return;
 
         Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
         rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRotation, turnSpeed * Time.fixedDeltaTime));
     }
 
-
     private void ApplyJump()
     {
         if (!jumpRequested) return;
         jumpRequested = false;
+
         Vector3 velocity = rb.linearVelocity;
         velocity.y = 0f;
         rb.linearVelocity = velocity;
@@ -156,32 +180,28 @@ public class PLayer : MonoBehaviour, IDamageable
 
     public void TakeDamage(float amount, Collider hitCollider = null)
     {
-        if (isDead) return;
+        if (isDead || amount <= 0f) return;
+        if (GameManagger.Instance != null && GameManagger.Instance.IsGameOver) return;
+        if (Time.time < nextDamageTime) return;
+        nextDamageTime = Time.time + damageCooldown;
 
         live = Mathf.Max(0f, live - amount);
 
         if (Damaged != null) Damaged(amount);
         if (data != null) Feedback.PlaySound(data.hurtSound, transform.position);
+        if (followCamera != null) followCamera.Kick(hitKickDistance, hitKickDuration);
 
         if (live <= 0f)
         {
-            isDead = true;
-            rb.linearVelocity = Vector3.zero;
-
-            if (GameManagger.Instance != null)
-            {
-                GameManagger.Instance.Defeat();
-            }
+            Die();
         }
     }
-
 
     public void Heal(float amount)
     {
         if (isDead) return;
         live = Mathf.Min(maxLive, live + amount);
     }
-
 
     public void SetSpawnPoint(Vector3 position)
     {
@@ -193,10 +213,17 @@ public class PLayer : MonoBehaviour, IDamageable
         if (isRespawning) return;
         isRespawning = true;
 
+        live = maxLive;
+        isDead = false;
+        moveDirection = Vector3.zero;
+        jumpRequested = false;
+
         rb.linearVelocity = Vector3.zero;
         rb.position = respawnPoint;
         transform.position = respawnPoint;
         Physics.SyncTransforms();
+
+        if (Respawned != null) Respawned();
 
         Invoke(nameof(ClearRespawnGuard), respawnGuardTime);
     }

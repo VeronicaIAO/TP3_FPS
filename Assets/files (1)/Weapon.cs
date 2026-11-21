@@ -6,13 +6,14 @@ using UnityEngine.InputSystem;
 public class WeaponSlot
 {
     public WeaponData data;
+    public GameObject model;
+    public Transform muzzle;
     [HideInInspector] public int amountBullets;
     [HideInInspector] public int reserveBullets;
 }
 
-
 public class Weapon : MonoBehaviour
-
+{
     public WeaponSlot[] weapons;
     public int startIndex = 0;
 
@@ -21,10 +22,18 @@ public class Weapon : MonoBehaviour
     public LayerMask hitMask = ~0;
     public AudioClip switchSound;
 
+    public Key switchKey = Key.R;
+    public Key reloadKey = Key.Q;
+    public bool autoReload = true;
+
     public WeaponSlot Current { get; private set; }
+    public int CurrentIndex { get { return currentIndex; } }
     public bool IsReloading { get; private set; }
 
+    public event System.Action Fired;
+
     private FolllowCamera3D followCamera;
+    private Transform owner;
     private Collider[] ownerColliders;
     private int currentIndex = -1;
     private float nextShotTime;
@@ -33,7 +42,7 @@ public class Weapon : MonoBehaviour
     {
         if (weapons == null || weapons.Length == 0)
         {
-            Debug.LogError("Weapon: la lista de armas está vacía.");
+            Debug.LogError("Weapon: the weapon list is empty.");
             enabled = false;
             return;
         }
@@ -42,14 +51,14 @@ public class Weapon : MonoBehaviour
         {
             if (slot == null || slot.data == null)
             {
-                Debug.LogError("Weapon: hay una arma sin WeaponData asignado.");
+                Debug.LogError("Weapon: a weapon slot has no WeaponData assigned.");
                 enabled = false;
                 return;
             }
 
             if (slot.data.useProjectile && slot.data.projectilePrefab == null)
             {
-                Debug.LogError("Weapon: " + slot.data.weaponName + " usa proyectiles pero no tiene Projectile Prefab.");
+                Debug.LogError("Weapon: " + slot.data.weaponName + " uses projectiles but has no Projectile Prefab.");
                 enabled = false;
                 return;
             }
@@ -68,8 +77,9 @@ public class Weapon : MonoBehaviour
             followCamera = cameraTransform.GetComponent<FolllowCamera3D>();
         }
 
-        PLayer owner = GetComponentInParent<PLayer>();
-        ownerColliders = owner != null ? owner.GetComponentsInChildren<Collider>() : GetComponentsInChildren<Collider>();
+        PLayer player = GetComponentInParent<PLayer>();
+        owner = player != null ? player.transform : transform;
+        ownerColliders = owner.GetComponentsInChildren<Collider>(true);
 
         Select(startIndex, false);
     }
@@ -79,7 +89,11 @@ public class Weapon : MonoBehaviour
         if (cameraTransform == null || Current == null) return;
         if (GameManagger.Instance != null && GameManagger.Instance.IsGameOver) return;
 
-        HandleSwitching();
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard != null && keyboard[switchKey].wasPressedThisFrame)
+        {
+            Select(currentIndex + 1);
+        }
 
         Mouse mouse = Mouse.current;
         if (mouse != null)
@@ -88,34 +102,9 @@ public class Weapon : MonoBehaviour
             if (fire) TryShoot();
         }
 
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard != null && keyboard.rKey.wasPressedThisFrame)
+        if (keyboard != null && keyboard[reloadKey].wasPressedThisFrame)
         {
             TryReload();
-        }
-    }
-
-    private void HandleSwitching()
-    {
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard != null)
-        {
-            int count = Mathf.Min(weapons.Length, 9);
-            for (int i = 0; i < count; i++)
-            {
-                if (keyboard[(Key)((int)Key.Digit1 + i)].wasPressedThisFrame)
-                {
-                    Select(i);
-                }
-            }
-        }
-
-        Mouse mouse = Mouse.current;
-        if (mouse != null)
-        {
-            float scroll = mouse.scroll.ReadValue().y;
-            if (scroll > 0.1f) Select(currentIndex + 1);
-            else if (scroll < -0.1f) Select(currentIndex - 1);
         }
     }
 
@@ -132,11 +121,18 @@ public class Weapon : MonoBehaviour
         currentIndex = index;
         Current = weapons[index];
 
+        for (int i = 0; i < weapons.Length; i++)
+        {
+            if (weapons[i] != null && weapons[i].model != null)
+            {
+                weapons[i].model.SetActive(i == index);
+            }
+        }
+
         if (playSound) Feedback.PlaySound(switchSound, transform.position);
     }
 
-
-    private void TryShoot()
+    void TryShoot()
     {
         if (IsReloading || Time.time < nextShotTime) return;
 
@@ -157,59 +153,100 @@ public class Weapon : MonoBehaviour
 
         Vector3 origin = cameraTransform.position;
         Vector3 direction = cameraTransform.forward;
+        Vector3 muzzlePosition = GetMuzzlePosition(origin, direction);
 
-        if (d.useProjectile) ShootProjectile(d, origin, direction);
-        else ShootRaycast(d, origin, direction);
+        if (d.useProjectile) ShootProjectile(d, origin, direction, muzzlePosition);
+        else ShootRaycast(d, origin, direction, muzzlePosition);
 
-        // Feedback del disparo: sonido y fogonazo
-        Feedback.PlaySound(d.shotSound, origin);
-        Vector3 flashPosition = muzzle != null ? muzzle.position : origin + direction * 0.8f;
-        Feedback.SpawnEffect(d.muzzleFlashPrefab, flashPosition, Quaternion.LookRotation(direction), 0.3f);
+        Feedback.PlaySound(d.shotSound, muzzlePosition, d.shotVolume);
+        if (d.muzzleFlashPrefab != null)
+        {
+            Feedback.SpawnEffect(d.muzzleFlashPrefab, muzzlePosition, Quaternion.LookRotation(direction), 0.3f);
+        }
+        else
+        {
+            Feedback.SpawnFlash(muzzlePosition, d.flashColor, 0.35f, 0.04f);
+        }
 
         if (followCamera != null)
         {
             followCamera.Kick(d.kickDistance, d.kickDuration);
         }
+
+        if (Fired != null) Fired();
+
+        if (autoReload && Current.amountBullets <= 0) TryReload();
     }
 
-    private void ShootRaycast(WeaponData d, Vector3 origin, Vector3 direction)
+    Vector3 GetMuzzlePosition(Vector3 origin, Vector3 direction)
     {
-        if (Physics.Raycast(origin, direction, out RaycastHit hit, d.range, hitMask, QueryTriggerInteraction.Ignore))
+        if (Current != null && Current.muzzle != null) return Current.muzzle.position;
+        if (muzzle != null) return muzzle.position;
+        return origin + direction * 2f + cameraTransform.right * 0.6f - cameraTransform.up * 0.4f;
+    }
+
+    bool IsOwnerCollider(Collider other)
+    {
+        return other != null && other.transform.IsChildOf(owner);
+    }
+
+    bool FindTarget(Vector3 origin, Vector3 direction, float range, out RaycastHit result)
+    {
+        RaycastHit[] hits = Physics.RaycastAll(origin, direction, range, hitMask, QueryTriggerInteraction.Ignore);
+        result = default(RaycastHit);
+        float nearest = float.MaxValue;
+        bool found = false;
+
+        foreach (RaycastHit hit in hits)
         {
+            if (IsOwnerCollider(hit.collider)) continue;
+            if (hit.distance < nearest)
+            {
+                nearest = hit.distance;
+                result = hit;
+                found = true;
+            }
+        }
+        return found;
+    }
+
+    void ShootRaycast(WeaponData d, Vector3 origin, Vector3 direction, Vector3 muzzlePosition)
+    {
+        Vector3 end = origin + direction * d.range;
+
+        if (FindTarget(origin, direction, d.range, out RaycastHit hit))
+        {
+            end = hit.point;
             Bullet.ApplyDamage(hit.collider, d.damage);
 
             Feedback.SpawnEffect(d.impactEffect, hit.point, Quaternion.LookRotation(hit.normal));
             Feedback.PlaySound(d.impactSound, hit.point);
+        }
 
-            Debug.DrawLine(origin, hit.point, Color.red, 0.2f);
-        }
-        else
-        {
-            Debug.DrawRay(origin, direction * d.range, Color.yellow, 0.2f);
-        }
+        Feedback.SpawnTracer(muzzlePosition, end, d.tracerSize, d.tracerSpeed);
     }
 
-    private void ShootProjectile(WeaponData d, Vector3 origin, Vector3 direction)
+    void ShootProjectile(WeaponData d, Vector3 origin, Vector3 direction, Vector3 spawnPosition)
     {
-        Vector3 target = Physics.Raycast(origin, direction, out RaycastHit hit, d.range, hitMask, QueryTriggerInteraction.Ignore)
+        Vector3 target = FindTarget(origin, direction, d.range, out RaycastHit hit)
             ? hit.point
             : origin + direction * d.range;
-
-        Vector3 spawnPosition = muzzle != null ? muzzle.position : origin + direction * 0.8f;
 
         Vector3 shotDirection = target - spawnPosition;
         if (shotDirection.sqrMagnitude < 0.01f) shotDirection = direction;
         shotDirection.Normalize();
 
         Bullet bullet = Instantiate(d.projectilePrefab, spawnPosition, Quaternion.LookRotation(shotDirection));
+        bullet.transform.localScale = Vector3.one * d.projectileScale;
         bullet.Setup(d);
 
         Collider bulletCollider = bullet.GetComponent<Collider>();
         if (bulletCollider != null)
         {
+            bulletCollider.isTrigger = false;
             foreach (Collider c in ownerColliders)
             {
-                Physics.IgnoreCollision(bulletCollider, c);
+                if (c != null) Physics.IgnoreCollision(bulletCollider, c);
             }
         }
 
@@ -218,28 +255,40 @@ public class Weapon : MonoBehaviour
 
     public bool TryReload()
     {
+        if (Current == null) return false;
         WeaponData d = Current.data;
 
         if (!d.canReload || IsReloading) return false;
         if (Current.amountBullets >= d.magazineSize || Current.reserveBullets <= 0) return false;
 
+        if (d.reloadTime <= 0f)
+        {
+            Feedback.PlaySound(d.reloadSound, transform.position);
+            Refill(Current);
+            return true;
+        }
+
         StartCoroutine(ReloadRoutine(Current));
         return true;
     }
 
-    private IEnumerator ReloadRoutine(WeaponSlot slot)
+    IEnumerator ReloadRoutine(WeaponSlot slot)
     {
         IsReloading = true;
         Feedback.PlaySound(slot.data.reloadSound, transform.position);
 
         yield return new WaitForSeconds(slot.data.reloadTime);
 
+        Refill(slot);
+        IsReloading = false;
+    }
+
+    void Refill(WeaponSlot slot)
+    {
         int needed = slot.data.magazineSize - slot.amountBullets;
         int taken = Mathf.Min(needed, slot.reserveBullets);
         slot.amountBullets += taken;
         slot.reserveBullets -= taken;
-
-        IsReloading = false;
     }
 
     public void AddReserve(int amount)

@@ -3,9 +3,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
 
-// Los números quedan fijos a propósito para no alterar objetos ya configurados en la escena
 public enum InteractableType { Door = 0, Switch = 1, Ammo = 3, Health = 4 }
-
 
 [RequireComponent(typeof(Collider))]
 public class Interactable : MonoBehaviour
@@ -13,24 +11,25 @@ public class Interactable : MonoBehaviour
     public InteractableType type = InteractableType.Ammo;
     public AudioClip sound;
 
-    [Header("Puerta (Door)")]
     public Vector3 openOffset = new Vector3(0f, 3f, 0f);
     public float openTime = 1f;
 
-    [Header("Interruptor (Switch)")]
     public UnityEvent onActivated;
-    public string prompt = "Presiona E para activar";
+    public string prompt = "Press E to activate";
     public Renderer indicator;
     public Color activatedColor = Color.green;
 
-    [Header("Recogible (Ammo / Health)")]
     public int amount = 1;
     public float rotationSpeed = 90f;
+    public float bobHeight = 0.3f;
+    public float bobSpeed = 2f;
 
     public bool IsOpen { get; private set; }
 
     private Vector3 closedPosition;
     private Vector3 openPosition;
+    private Vector3 startPosition;
+    private Rigidbody body;
     private bool playerInside;
     private bool used;
 
@@ -38,8 +37,12 @@ public class Interactable : MonoBehaviour
     {
         GetComponent<Collider>().isTrigger = type != InteractableType.Door;
 
+        body = GetComponent<Rigidbody>();
+        if (type == InteractableType.Door && body != null) body.isKinematic = true;
+
         closedPosition = transform.position;
         openPosition = closedPosition + openOffset;
+        startPosition = transform.position;
     }
 
     void Update()
@@ -49,6 +52,7 @@ public class Interactable : MonoBehaviour
             case InteractableType.Ammo:
             case InteractableType.Health:
                 transform.Rotate(0f, rotationSpeed * Time.deltaTime, 0f, Space.World);
+                transform.position = startPosition + Vector3.up * Mathf.Sin(Time.time * bobSpeed) * bobHeight;
                 break;
 
             case InteractableType.Switch:
@@ -63,7 +67,8 @@ public class Interactable : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        if (!other.CompareTag("PLayer")) return;
+        PLayer player = other.GetComponentInParent<PLayer>();
+        if (player == null) return;
 
         if (type == InteractableType.Switch)
         {
@@ -72,13 +77,13 @@ public class Interactable : MonoBehaviour
         }
         else if (type != InteractableType.Door)
         {
-            Collect(other);
+            Collect(player);
         }
     }
 
     void OnTriggerExit(Collider other)
     {
-        if (type == InteractableType.Switch && other.CompareTag("PLayer")) playerInside = false;
+        if (type == InteractableType.Switch && other.GetComponentInParent<PLayer>() != null) playerInside = false;
     }
 
     private void ActivateSwitch()
@@ -89,14 +94,12 @@ public class Interactable : MonoBehaviour
         if (indicator != null) indicator.material.color = activatedColor;
 
         onActivated.Invoke();
-        GameManagger.Notify("¡Mecanismo activado!");
+        GameManagger.Notify("Mechanism activated!");
     }
 
-    private void Collect(Collider other)
+    private void Collect(PLayer player)
     {
-        PLayer player = other.GetComponentInParent<PLayer>();
-        if (player == null) return;
-
+        if (used) return;
         bool collected = false;
 
         switch (type)
@@ -107,7 +110,6 @@ public class Interactable : MonoBehaviour
                 if (weapon != null && weapon.Current != null)
                 {
                     weapon.AddReserve(amount);
-                    GameManagger.Notify("+" + amount + " balas");
                     collected = true;
                 }
                 break;
@@ -118,7 +120,6 @@ public class Interactable : MonoBehaviour
                 if (player.live < player.maxLive)
                 {
                     player.Heal(amount);
-                    GameManagger.Notify("+" + amount + " de vida");
                     collected = true;
                 }
                 break;
@@ -127,6 +128,7 @@ public class Interactable : MonoBehaviour
 
         if (collected)
         {
+            used = true;
             Feedback.PlaySound(sound, transform.position);
             Destroy(gameObject);
         }
@@ -141,6 +143,7 @@ public class Interactable : MonoBehaviour
         StopAllCoroutines();
         StartCoroutine(MoveTo(openPosition));
     }
+
     public void Close()
     {
         if (type != InteractableType.Door || !IsOpen) return;
@@ -158,10 +161,13 @@ public class Interactable : MonoBehaviour
         while (t < 1f)
         {
             t += Time.deltaTime / Mathf.Max(openTime, 0.01f);
-            transform.position = Vector3.Lerp(start, destination, Mathf.SmoothStep(0f, 1f, t));
+            Vector3 next = Vector3.Lerp(start, destination, Mathf.SmoothStep(0f, 1f, t));
+            if (body != null) body.MovePosition(next);
+            else transform.position = next;
             yield return null;
         }
 
+        if (body != null) body.position = destination;
         transform.position = destination;
     }
 }

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 499e4b252f2e77441a04cad83ae00047, type: 3}
   m_Name: PlayerData
   m_EditorClassIdentifier: Assembly-CSharp::PlayerData
-  moveSpeed: 5
+  moveSpeed: 10
   jumpForce: 6
   maxLive: 100
   hurtSound: {fileID: 0}

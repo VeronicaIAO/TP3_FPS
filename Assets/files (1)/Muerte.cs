@@ -1,6 +1,5 @@
 using UnityEngine;
 
-
 [RequireComponent(typeof(Collider))]
 public class Muerte : MonoBehaviour
 {
@@ -11,14 +10,10 @@ public class Muerte : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        if (!other.CompareTag("PLayer")) return;
- 
-        PLayer player = other.GetComponent<PLayer>();
+        PLayer player = other.GetComponentInParent<PLayer>();
         if (player != null)
         {
             player.Die();
         }
-           
     }
 }
-

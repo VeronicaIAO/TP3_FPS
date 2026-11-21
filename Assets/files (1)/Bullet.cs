@@ -1,11 +1,9 @@
 using UnityEngine;
 
-
 public interface IDamageable
 {
     void TakeDamage(float amount, Collider hitCollider);
 }
-
 
 public static class Feedback
 {
@@ -22,6 +20,61 @@ public static class Feedback
         GameObject effect = Object.Instantiate(prefab, position, rotation);
         Object.Destroy(effect, lifetime);
     }
+
+    public static void SpawnFlash(Vector3 position, Color color, float size, float lifetime)
+    {
+        GameObject flash = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        flash.name = "Flash";
+        Object.Destroy(flash.GetComponent<Collider>());
+        flash.transform.position = position;
+        flash.transform.localScale = Vector3.one * size;
+
+        Renderer renderer = flash.GetComponent<Renderer>();
+        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        MaterialPropertyBlock block = new MaterialPropertyBlock();
+        block.SetColor("_BaseColor", color);
+        block.SetColor("_Color", color);
+        renderer.SetPropertyBlock(block);
+
+        Object.Destroy(flash, lifetime);
+    }
+
+    public static void SpawnTracer(Vector3 from, Vector3 to, float size, float speed)
+    {
+        GameObject tracer = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        tracer.name = "Tracer";
+        Object.Destroy(tracer.GetComponent<Collider>());
+        tracer.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        tracer.transform.localScale = new Vector3(size, size * 2f, size);
+
+        Tracer mover = tracer.AddComponent<Tracer>();
+        mover.Launch(from, to, speed);
+    }
+}
+
+public class Tracer : MonoBehaviour
+{
+    private Vector3 target;
+    private float speed;
+
+    public void Launch(Vector3 from, Vector3 to, float travelSpeed)
+    {
+        transform.position = from;
+        target = to;
+        speed = Mathf.Max(travelSpeed, 1f);
+
+        Vector3 direction = to - from;
+        if (direction.sqrMagnitude > 0.0001f)
+        {
+            transform.rotation = Quaternion.LookRotation(direction) * Quaternion.Euler(90f, 0f, 0f);
+        }
+    }
+
+    void Update()
+    {
+        transform.position = Vector3.MoveTowards(transform.position, target, speed * Time.deltaTime);
+        if ((transform.position - target).sqrMagnitude < 0.0001f) Destroy(gameObject);
+    }
 }
 
 [RequireComponent(typeof(Rigidbody))]
@@ -29,7 +82,6 @@ public class Bullet : MonoBehaviour
 {
     public static event System.Action TargetHit;
 
-    [Header("Valores por defecto (los pisa el WeaponData cuando el arma dispara)")]
     public float damage = 25f;
     public float speed = 40f;
     public float lifeTime = 3f;
@@ -55,6 +107,7 @@ public class Bullet : MonoBehaviour
 
     public void Launch(Vector3 direction)
     {
+        rb.isKinematic = false;
         rb.useGravity = false;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rb.linearVelocity = direction.normalized * speed;
@@ -69,12 +122,13 @@ public class Bullet : MonoBehaviour
 
         ApplyDamage(collision.collider, damage);
 
-        // Feedback del impacto
+        Vector3 point = collision.contactCount > 0 ? collision.GetContact(0).point : transform.position;
+        Vector3 normal = collision.contactCount > 0 ? collision.GetContact(0).normal : -transform.forward;
+
         if (weaponData != null)
         {
-            ContactPoint contact = collision.GetContact(0);
-            Feedback.SpawnEffect(weaponData.impactEffect, contact.point, Quaternion.LookRotation(contact.normal));
-            Feedback.PlaySound(weaponData.impactSound, contact.point);
+            Feedback.SpawnEffect(weaponData.impactEffect, point, Quaternion.LookRotation(normal));
+            Feedback.PlaySound(weaponData.impactSound, point);
         }
 
         Destroy(gameObject);

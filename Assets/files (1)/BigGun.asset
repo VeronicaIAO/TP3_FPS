@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e46f89875fc38d4087ff8b84545afbc, type: 3}
   m_Name: BigGun
   m_EditorClassIdentifier: Assembly-CSharp::WeaponData
-  weaponName: Pistola2
+  weaponName: Cannon
   damage: 50
   magazineSize: 4
   startReserveBullets: 12
   canReload: 1
-  reloadTime: 1.5
+  reloadTime: 0
   velicityShoot: 1.2
   automatic: 0
   range: 100

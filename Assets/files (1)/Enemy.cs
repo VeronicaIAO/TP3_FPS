@@ -22,7 +22,6 @@ public class Enemy : MonoBehaviour, IDamageable
 
     public HitZone[] hitZones;
 
-    [Header("Feedback visual")]
     public Renderer indicatorRenderer;
     public Color patrolColor = Color.green;
     public Color investigateColor = new Color(1f, 0.6f, 0f);
@@ -76,7 +75,7 @@ public class Enemy : MonoBehaviour, IDamageable
     {
         UpdateFeedback();
 
-        if (isDead || player == null) return;
+        if (isDead || player == null || player.IsDead) return;
         if (GameManagger.Instance != null && GameManagger.Instance.IsGameOver) return;
 
         UpdateDetection();
@@ -149,7 +148,13 @@ public class Enemy : MonoBehaviour, IDamageable
     {
         if (patrolPoints == null || patrolPoints.Length == 0) return;
 
-        Transform point = patrolPoints[patrolIndex];
+        Transform point = patrolPoints[patrolIndex % patrolPoints.Length];
+        if (point == null)
+        {
+            patrolIndex = (patrolIndex + 1) % patrolPoints.Length;
+            return;
+        }
+
         if (HorizontalDistance(transform.position, point.position) <= data.waypointTolerance)
         {
             waitTimer += Time.deltaTime;
@@ -196,6 +201,7 @@ public class Enemy : MonoBehaviour, IDamageable
         if (Time.time < nextAttackTime) return;
         nextAttackTime = Time.time + data.attackCooldown;
 
+        if (player.IsDead) return;
         player.TakeDamage(data.attackDamage, null);
         Feedback.PlaySound(data.attackSound, transform.position);
     }
@@ -253,7 +259,7 @@ public class Enemy : MonoBehaviour, IDamageable
         BodyPart part = GetBodyPart(hitCollider);
         life -= amount * GetMultiplier(part);
 
-        if (part == BodyPart.Head) GameManagger.Notify("¡Cabeza!", 0.6f);
+        if (part == BodyPart.Head) GameManagger.Notify("Headshot!", 0.6f);
 
         if (life <= 0f)
         {

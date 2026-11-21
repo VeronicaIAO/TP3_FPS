@@ -1,31 +1,30 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class FolllowCamera3D : MonoBehaviour
 {
     public Transform target;
 
-    [Header("Modo de cámara")]
     public bool firstPerson = true;
     public float distance = 5f;
     public Vector3 targetOffset = new Vector3(0f, 0.6f, 0f);
 
-    [Header("Mouse")]
     public float sensitivityX = 3f;
     public float sensitivityY = 2f;
+    public float mouseScale = 0.1f;
     public float minPitch = -20f;
     public float maxPitch = 70f;
     public float fpsMinPitch = -80f;
     public float fpsMaxPitch = 80f;
 
-    [Header("Colisión")]
     public LayerMask collisionMask;
     public float collisionBuffer = 0.25f;
 
-    [Header("Retroceso al disparar")]
     public float kickDistance = 0.25f;
     public float kickDuration = 0.5f;
     [Range(0.05f, 0.5f)]
     public float kickRise = 0.15f;
+    public float kickPitch = 1.5f;
 
     private float yaw;
     private float pitch = 15f;
@@ -62,13 +61,24 @@ public class FolllowCamera3D : MonoBehaviour
         if (target == null) return;
 
         bool gameOver = GameManagger.Instance != null && GameManagger.Instance.IsGameOver;
-        if (!gameOver)
+        if (!gameOver && Cursor.lockState == CursorLockMode.Locked)
         {
-            float mouseX = Input.GetAxis("Mouse X");
-            float mouseY = Input.GetAxis("Mouse Y");
+            Vector2 look = Vector2.zero;
 
-            yaw += mouseX * sensitivityX;
-            pitch -= mouseY * sensitivityY;
+            Mouse mouse = Mouse.current;
+            if (mouse != null) look += mouse.delta.ReadValue() * mouseScale;
+
+            Gamepad gamepad = Gamepad.current;
+            if (gamepad != null) look += gamepad.rightStick.ReadValue() * 100f * Time.deltaTime;
+
+            yaw += look.x * sensitivityX;
+            pitch -= look.y * sensitivityY;
+        }
+
+        if (!gameOver && Cursor.lockState != CursorLockMode.Locked && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
         }
 
         float minP = firstPerson ? fpsMinPitch : minPitch;
@@ -77,7 +87,7 @@ public class FolllowCamera3D : MonoBehaviour
 
         UpdateKick();
 
-        Quaternion rotation = Quaternion.Euler(pitch, yaw, 0f);
+        Quaternion rotation = Quaternion.Euler(pitch - kickPitch * kickAmount, yaw, 0f);
         Vector3 pivot = target.position + targetOffset;
 
         float baseDistance = firstPerson ? 0f : distance;
