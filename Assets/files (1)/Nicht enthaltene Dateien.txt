@@ -1,0 +1,11 @@
+Dateien, die nicht in dieser ZIP-Datei enthalten sind, weil sie nicht gefunden werden konnten:
+- outputs/AmmoData.cs
+- outputs/WeaponSwitcher.cs
+- outputs/Feedback.cs
+- outputs/Door.cs
+- outputs/ActivationSwitch.cs
+- outputs/Pickup.cs
+- outputs/HUD.cs
+- outputs/IDamageable.cs
+
+Um eine Datei aus dieser Liste zu erhalten, bitte Claude, sie im ursprünglichen Chat neu zu erstellen.
