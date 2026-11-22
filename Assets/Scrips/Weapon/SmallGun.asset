@@ -25,11 +25,16 @@ MonoBehaviour:
   projectilePrefab: {fileID: 4807410922819569392, guid: b16ff672680f97a4e9cb4dd6b084ee04, type: 3}
   projectileSpeed: 40
   projectileLifeTime: 3
+  projectileScale: 0.4
+  tracerSize: 0.12
+  tracerSpeed: 150
   kickDistance: 0.4
   kickDuration: 0.5
+  flashColor: {r: 1, g: 0.85, b: 0.3, a: 1}
   muzzleFlashPrefab: {fileID: 0}
   impactEffect: {fileID: 0}
-  shotSound: {fileID: 0}
-  reloadSound: {fileID: 0}
+  shotSound: {fileID: 8300000, guid: 73896ce3299078a4790f64f659e04b57, type: 3}
+  shotVolume: 1
+  reloadSound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   emptySound: {fileID: 0}
   impactSound: {fileID: 0}

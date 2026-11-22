@@ -2586,7 +2586,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0.7071068, y: -0, z: -0, w: 0.7071068}
   m_LocalPosition: {x: -0, y: 0.688, z: 1.32}
-  m_LocalScale: {x: 4.644119, y: 1.6312499, z: 1.0423772}
+  m_LocalScale: {x: 4.644119, y: 1.6312499, z: 0.76863855}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 613575626}
@@ -4407,7 +4407,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   type: 3
-  sound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   openOffset: {x: 0, y: 3, z: 0}
   openTime: 1
   onActivated:
@@ -5525,7 +5525,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   type: 3
-  sound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   openOffset: {x: 0, y: 3, z: 0}
   openTime: 1
   onActivated:
@@ -5692,7 +5692,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   type: 3
-  sound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   openOffset: {x: 0, y: 3, z: 0}
   openTime: 1
   onActivated:
@@ -7078,7 +7078,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   type: 3
-  sound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   openOffset: {x: 0, y: 3, z: 0}
   openTime: 1
   onActivated:
@@ -9063,7 +9063,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   type: 3
-  sound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   openOffset: {x: 0, y: 3, z: 0}
   openTime: 1
   onActivated:
@@ -9486,7 +9486,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   type: 3
-  sound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   openOffset: {x: 0, y: 3, z: 0}
   openTime: 1
   onActivated:
@@ -11649,7 +11649,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   type: 3
-  sound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   openOffset: {x: 0, y: 3, z: 0}
   openTime: 1
   onActivated:
@@ -13823,7 +13823,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   type: 3
-  sound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   openOffset: {x: 0, y: 3, z: 0}
   openTime: 1
   onActivated:
@@ -14388,7 +14388,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   type: 3
-  sound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   openOffset: {x: 0, y: 3, z: 0}
   openTime: 1
   onActivated:
@@ -14512,7 +14512,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   type: 3
-  sound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   openOffset: {x: 0, y: 3, z: 0}
   openTime: 1
   onActivated:
@@ -17455,7 +17455,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   type: 3
-  sound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   openOffset: {x: 0, y: 3, z: 0}
   openTime: 1
   onActivated:
@@ -18009,7 +18009,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   type: 3
-  sound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   openOffset: {x: 0, y: 3, z: 0}
   openTime: 1
   onActivated:
@@ -18268,7 +18268,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   type: 3
-  sound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   openOffset: {x: 0, y: 3, z: 0}
   openTime: 1
   onActivated:
@@ -19843,7 +19843,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Interactable
   type: 3
-  sound: {fileID: 0}
+  sound: {fileID: 8300000, guid: e81629e9913ed864b859b8428e4eba4c, type: 3}
   openOffset: {x: 0, y: 3, z: 0}
   openTime: 1
   onActivated:
@@ -22302,7 +22302,7 @@ Transform:
   m_GameObject: {fileID: 1997401185}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.014241597, w: 0.9998986}
-  m_LocalPosition: {x: 0.32, y: -0.3, z: 0.3}
+  m_LocalPosition: {x: 0.32, y: -0.4, z: 0.36}
   m_LocalScale: {x: 0.10000002, y: 0.5, z: 0.15}
   m_ConstrainProportionsScale: 0
   m_Children:
